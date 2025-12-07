@@ -60,3 +60,5 @@ app.post('/sms', async (req, res) => {
 app.listen(PORT, () => {
     console.log(`Gameloop running on port ${PORT}`);
 });
+
+module.exports = app;
