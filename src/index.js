@@ -18,7 +18,8 @@ app.post('/sms', async (req, res) => {
     console.log(`Received SMS from ${sender}: ${message}`);
 
     // 1. Check if User exists (Onboarding)
-    const user = require('./engine/UserManager').getUser(sender);
+    const UserManager = require('./engine/UserManager');
+    const user = await UserManager.getUser(sender);
     if (!user) {
         // New User Flow
         const onboardingState = SessionManager.onboarding.get(sender);
@@ -27,7 +28,7 @@ app.post('/sms', async (req, res) => {
             await MessagingService.send(sender, "Welcome to Gameloop! I don't recognize this number. What should I call you?");
         } else {
             // Save Name
-            require('./engine/UserManager').createUser(sender, message);
+            await UserManager.createUser(sender, message);
             SessionManager.onboarding.delete(sender);
             await MessagingService.send(sender, `Nice to meet you, ${message}! Reply with a number to pick a game.`);
             await sendMenu(sender);
@@ -67,16 +68,15 @@ app.post('/sms', async (req, res) => {
         } else {
             // Parsing Invites
             const InputParser = require('./engine/InputParser');
-            const UserManager = require('./engine/UserManager');
 
             const parsed = InputParser.parseInvites(message);
             let addedCount = 0;
             let responseMsg = "";
 
             // Add new friends
-            parsed.newFriends.forEach(f => {
+            for (const f of parsed.newFriends) {
                 // Determine if valid phone
-                UserManager.addFriend(sender, f.name, f.phone);
+                await UserManager.addFriend(sender, f.name, f.phone);
                 if (!lobby.players.includes(f.phone)) {
                     lobby.players.push(f.phone);
                     // Notify the friend? Maybe not yet to avoid spam, or yes to invite?
@@ -84,11 +84,11 @@ app.post('/sms', async (req, res) => {
                     responseMsg += `Added ${f.name} (${f.phone}). `;
                     addedCount++;
                 }
-            });
+            }
 
             // Add existing names
-            parsed.existingNames.forEach(name => {
-                const friend = UserManager.getFriendByName(sender, name);
+            for (const name of parsed.existingNames) {
+                const friend = await UserManager.getFriendByName(sender, name);
                 if (friend) {
                     if (!lobby.players.includes(friend.phone)) {
                         lobby.players.push(friend.phone);
@@ -98,12 +98,12 @@ app.post('/sms', async (req, res) => {
                 } else {
                     responseMsg += `Could not find friend '${name}'. `;
                 }
-            });
+            }
 
             if (addedCount > 0) {
                 await MessagingService.send(sender, `${responseMsg}\nCurrent Lobby: ${lobby.players.length} players. Reply 'START' to begin or add more.`);
             } else {
-                const friends = UserManager.getFriendListDisplay(sender);
+                const friends = await UserManager.getFriendListDisplay(sender);
                 await MessagingService.send(sender, `I didn't catch that. Reply with 'Add [Name] [Number]' or just '[Name]' if they are in your history.\n\nYour Friends: ${friends}\n\nReply START to go.`);
             }
         }
@@ -131,7 +131,8 @@ app.post('/sms', async (req, res) => {
 });
 
 async function sendMenu(to) {
-    let menu = `Welcome back to Gameloop, ${require('./engine/UserManager').getUser(to).name}! Reply with a number:\n`;
+    const user = await require('./engine/UserManager').getUser(to);
+    let menu = `Welcome back to Gameloop, ${user ? user.name : 'Player'}! Reply with a number:\n`;
     Object.keys(GameRegistry).forEach(key => {
         menu += `${key}. ${GameRegistry[key].name}\n`;
     });

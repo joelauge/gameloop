@@ -1,48 +1,82 @@
+const { Pool } = require('pg');
+
+// Use env var or fallback (fallback likely won't work in prod without setup, but good for local if env set)
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: {
+        rejectUnauthorized: false
+    }
+});
+
 class UserManager {
-    constructor() {
-        this.users = new Map(); // phoneNumber -> { name, friends: [] }
-        // Friends = [ { name, phone } ]
-    }
 
-    getUser(phoneNumber) {
-        return this.users.get(phoneNumber);
-    }
-
-    createUser(phoneNumber, name) {
-        if (!this.users.has(phoneNumber)) {
-            this.users.set(phoneNumber, {
-                name: name,
-                friends: []
-            });
-        }
-        return this.users.get(phoneNumber);
-    }
-
-    addFriend(hostNumber, friendName, friendNumber) {
-        const user = this.getUser(hostNumber);
-        if (!user) return;
-
-        // Check if already exists
-        const exists = user.friends.find(f => f.phone === friendNumber || f.name.toLowerCase() === friendName.toLowerCase());
-        if (!exists) {
-            user.friends.push({ name: friendName, phone: friendNumber });
+    async getUser(phoneNumber) {
+        try {
+            const res = await pool.query('SELECT * FROM users WHERE phone_number = $1', [phoneNumber]);
+            if (res.rows.length > 0) {
+                return res.rows[0];
+            }
+            return null;
+        } catch (err) {
+            console.error("DB Error getUser:", err);
+            return null;
         }
     }
 
-    getFriendByName(hostNumber, name) {
-        const user = this.getUser(hostNumber);
-        if (!user) return null;
-
-        return user.friends.find(f => f.name.toLowerCase() === name.toLowerCase());
+    async createUser(phoneNumber, name) {
+        try {
+            const res = await pool.query(
+                'INSERT INTO users (phone_number, name) VALUES ($1, $2) RETURNING *',
+                [phoneNumber, name]
+            );
+            return res.rows[0];
+        } catch (err) {
+            console.error("DB Error createUser:", err);
+            return null;
+        }
     }
 
-    // Helper to format a friend list for display
-    getFriendListDisplay(hostNumber) {
-        const user = this.getUser(hostNumber);
-        if (!user || user.friends.length === 0) return "No saved friends.";
-        return user.friends.map(f => `${f.name}`).join(', ');
+    async addFriend(hostNumber, friendName, friendNumber) {
+        try {
+            // Check if exists to prevent dupe errors if using simple insert
+            // The UNIQUE constraint handles it, but let's be safe or use ON CONFLICT
+            await pool.query(
+                `INSERT INTO friends (user_phone, friend_name, friend_phone) 
+                 VALUES ($1, $2, $3) 
+                 ON CONFLICT (user_phone, friend_phone) DO NOTHING`,
+                [hostNumber, friendName, friendNumber]
+            );
+        } catch (err) {
+            console.error("DB Error addFriend:", err);
+        }
+    }
+
+    async getFriendByName(hostNumber, name) {
+        try {
+            const res = await pool.query(
+                'SELECT * FROM friends WHERE user_phone = $1 AND LOWER(friend_name) = LOWER($2)',
+                [hostNumber, name]
+            );
+            if (res.rows.length > 0) {
+                return { name: res.rows[0].friend_name, phone: res.rows[0].friend_phone };
+            }
+            return null;
+        } catch (err) {
+            console.error("DB Error getFriendByName:", err);
+            return null;
+        }
+    }
+
+    async getFriendListDisplay(hostNumber) {
+        try {
+            const res = await pool.query('SELECT friend_name FROM friends WHERE user_phone = $1', [hostNumber]);
+            if (res.rows.length === 0) return "No saved friends.";
+            return res.rows.map(f => f.friend_name).join(', ');
+        } catch (err) {
+            console.error("DB Error getFriendList:", err);
+            return "Error fetching friends.";
+        }
     }
 }
 
-// Singleton for Prototype
 module.exports = new UserManager();
