@@ -17,45 +17,126 @@ app.post('/sms', async (req, res) => {
 
     console.log(`Received SMS from ${sender}: ${message}`);
 
-    // Check if user is in an active session
-    let session = SessionManager.getSession(sender);
+    // 1. Check if User exists (Onboarding)
+    const user = require('./engine/UserManager').getUser(sender);
+    if (!user) {
+        // New User Flow
+        const onboardingState = SessionManager.onboarding.get(sender);
+        if (!onboardingState) {
+            SessionManager.onboarding.set(sender, { step: 'NAME' });
+            await MessagingService.send(sender, "Welcome to Gameloop! I don't recognize this number. What should I call you?");
+        } else {
+            // Save Name
+            require('./engine/UserManager').createUser(sender, message);
+            SessionManager.onboarding.delete(sender);
+            await MessagingService.send(sender, `Nice to meet you, ${message}! Reply with a number to pick a game.`);
+            await sendMenu(sender);
+        }
+        res.type('text/xml').send('<Response></Response>');
+        return;
+    }
 
+    // 2. Check if in Active Game
+    let session = SessionManager.getSession(sender);
     if (session) {
-        // In-game logic
         if (message.toLowerCase() === 'quit') {
             SessionManager.endSession(sender);
             await MessagingService.send(sender, "You have left the game.");
         } else {
             session.processInput(sender, message);
         }
-    } else {
-        // Main Menu / Lobby Logic
-        if (GameRegistry[message]) {
-            // User selected a game by number
-            const gameEntry = GameRegistry[message];
-            if (!gameEntry.class) {
-                await MessagingService.send(sender, `Sorry, ${gameEntry.name} is coming soon! Pick another.`);
-            } else {
-                const newSession = SessionManager.createSession(gameEntry.class, sender);
-                await MessagingService.send(sender, `Starting ${gameEntry.name}...`);
-                // For now, simpler single player start or we need a way to add players. 
-                // Let's assume for prototype we just start immediately or ask for invites.
-                // Simplification: Auto-start for now to test.
-                const response = newSession.startGame();
-                await MessagingService.send(sender, response);
-            }
-        } else {
-            // Show Menu
-            let menu = "Welcome to Gameloop! Reply with a number to play:\n";
-            Object.keys(GameRegistry).forEach(key => {
-                menu += `${key}. ${GameRegistry[key].name}\n`;
-            });
-            await MessagingService.send(sender, menu);
-        }
+        res.type('text/xml').send('<Response></Response>');
+        return;
     }
 
+    // 3. Check if in Lobby Setup
+    const lobby = SessionManager.lobbies.get(sender);
+    if (lobby) {
+        if (message.toLowerCase() === 'start') {
+            // Start the game with gathered players
+            const newSession = SessionManager.createSession(lobby.gameClass, sender, lobby.players);
+            SessionManager.lobbies.delete(sender);
+
+            await MessagingService.send(sender, "Starting game...");
+            const response = newSession.startGame(); // This usually returns a string, but broadcasts are better
+            // Ideally startGame broadcasts to everyone.
+        } else if (message.toLowerCase() === 'cancel') {
+            SessionManager.lobbies.delete(sender);
+            await MessagingService.send(sender, "Lobby cancelled.");
+            await sendMenu(sender);
+        } else {
+            // Parsing Invites
+            const InputParser = require('./engine/InputParser');
+            const UserManager = require('./engine/UserManager');
+
+            const parsed = InputParser.parseInvites(message);
+            let addedCount = 0;
+            let responseMsg = "";
+
+            // Add new friends
+            parsed.newFriends.forEach(f => {
+                // Determine if valid phone
+                UserManager.addFriend(sender, f.name, f.phone);
+                if (!lobby.players.includes(f.phone)) {
+                    lobby.players.push(f.phone);
+                    // Notify the friend? Maybe not yet to avoid spam, or yes to invite?
+                    // For simplicity, we assume they are 'in' when game starts.
+                    responseMsg += `Added ${f.name} (${f.phone}). `;
+                    addedCount++;
+                }
+            });
+
+            // Add existing names
+            parsed.existingNames.forEach(name => {
+                const friend = UserManager.getFriendByName(sender, name);
+                if (friend) {
+                    if (!lobby.players.includes(friend.phone)) {
+                        lobby.players.push(friend.phone);
+                        responseMsg += `Added ${friend.name}. `;
+                        addedCount++;
+                    }
+                } else {
+                    responseMsg += `Could not find friend '${name}'. `;
+                }
+            });
+
+            if (addedCount > 0) {
+                await MessagingService.send(sender, `${responseMsg}\nCurrent Lobby: ${lobby.players.length} players. Reply 'START' to begin or add more.`);
+            } else {
+                const friends = UserManager.getFriendListDisplay(sender);
+                await MessagingService.send(sender, `I didn't catch that. Reply with 'Add [Name] [Number]' or just '[Name]' if they are in your history.\n\nYour Friends: ${friends}\n\nReply START to go.`);
+            }
+        }
+        res.type('text/xml').send('<Response></Response>');
+        return;
+    }
+
+    // 4. Main Menu / Game Selection
+    if (GameRegistry[message]) {
+        const gameEntry = GameRegistry[message];
+        if (!gameEntry.class) {
+            await MessagingService.send(sender, `Sorry, ${gameEntry.name} is coming soon!`);
+        } else {
+            // Create Lobby
+            SessionManager.lobbies.set(sender, {
+                gameClass: gameEntry.class,
+                players: [sender]
+            });
+            await MessagingService.send(sender, `Setting up ${gameEntry.name}!\n\nWho are we playing with? Reply with:\n"Add Name Number" (e.g. Add Bob 555-1234)\nOr just "Bob" if you've played before.\n\nReply 'START' when ready.`);
+        }
+    } else {
+        await sendMenu(sender);
+    }
     res.type('text/xml').send('<Response></Response>');
 });
+
+async function sendMenu(to) {
+    let menu = `Welcome back to Gameloop, ${require('./engine/UserManager').getUser(to).name}! Reply with a number:\n`;
+    Object.keys(GameRegistry).forEach(key => {
+        menu += `${key}. ${GameRegistry[key].name}\n`;
+    });
+    await MessagingService.send(to, menu);
+}
 
 app.listen(PORT, () => {
     console.log(`Gameloop running on port ${PORT}`);
