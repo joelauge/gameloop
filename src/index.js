@@ -17,6 +17,13 @@ app.post('/sms', async (req, res) => {
 
     console.log(`Received SMS from ${sender}: ${message}`);
 
+    // 0. Handle Global Commands (QUIT, MENU, JOIN, RESTART)
+    const GlobalCommands = require('./engine/GlobalCommands');
+    if (await GlobalCommands.handle(sender, message)) {
+        res.type('text/xml').send('<Response></Response>');
+        return;
+    }
+
     // 1. Check if User exists (Onboarding)
     const UserManager = require('./engine/UserManager');
     const user = await UserManager.getUser(sender);
