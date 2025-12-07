@@ -44,6 +44,15 @@ app.post('/sms', async (req, res) => {
             SessionManager.endSession(sender);
             await MessagingService.send(sender, "You have left the game.");
         } else {
+            // Chat Relay: Broadcast to others
+            const others = session.players.filter(p => p !== sender);
+            if (others.length > 0) {
+                const userProfile = await UserManager.getUser(sender);
+                const senderName = userProfile ? userProfile.name : "Player";
+                await MessagingService.broadcast(others, `${senderName}: ${message}`);
+            }
+
+            // Game Processing
             session.processInput(sender, message);
         }
         res.type('text/xml').send('<Response></Response>');
