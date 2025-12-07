@@ -10,18 +10,18 @@ class SMSBakeOff extends Game {
         this.actions = ["whip", "fold", "nuke", "summon sous-chef"];
     }
 
-    startGame() {
-        super.startGame();
-        this.askAllPlayers();
+    async startGame() {
+        await super.startGame();
+        await this.askAllPlayers();
         return "Welcome to the SMS Bake-Off! Prepare your aprons.";
     }
 
-    askAllPlayers() {
+    async askAllPlayers() {
         const ing = this.ingredients[Math.floor(Math.random() * this.ingredients.length)];
         this.currentIngredient = ing;
 
-        MessagingService.broadcast(this.players, `Today's secret ingredient is: ${ing}.`);
-        MessagingService.broadcast(this.players, `Reply with one action: ${this.actions.join(', ')}`);
+        await MessagingService.broadcast(this.players, `Today's secret ingredient is: ${ing}.`);
+        await MessagingService.broadcast(this.players, `Reply with one action: ${this.actions.join(', ')}`);
 
         this.roundSubmissions = {};
     }

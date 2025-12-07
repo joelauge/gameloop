@@ -17,40 +17,41 @@ class WereTextMystery extends Game {
         this.playerMoves = {}; // Map<player, move>
     }
 
-    startGame() {
-        super.startGame();
+    async startGame() {
+        await super.startGame();
         // Assign roles
         if (this.players.length < 2) {
-            // For testing/single player, we proceed but it's not ideal
+            // For testing/single player
             this.texterwolf = this.players[0]; // Host is wolf in single player
+            await MessagingService.send(this.players[0], "Solo Mode: You are the Texterwolf (and also the Villager). Practice round!");
         } else {
             const wolfIndex = Math.floor(Math.random() * this.players.length);
             this.texterwolf = this.players[wolfIndex];
+
+            // Notify players of roles
+            for (const p of this.players) {
+                if (p === this.texterwolf) {
+                    await MessagingService.send(p, "You are the Texterwolf! Sabotage the group.");
+                } else {
+                    await MessagingService.send(p, "You are a Villager. Find the Texterwolf and survive.");
+                }
+            }
         }
 
-        // Notify players of roles
-        this.players.forEach(p => {
-            if (p === this.texterwolf) {
-                MessagingService.send(p, "You are the Texterwolf! Sabotage the group.");
-            } else {
-                MessagingService.send(p, "You are a Villager. Find the Texterwolf and survive.");
-            }
-        });
-
-        this.nextRound();
+        await this.nextRound();
         return "The Were-Text Mystery Begins! Roles have been assigned.";
     }
 
-    nextRound() {
+    async nextRound() {
         this.rounds++;
         if (this.rounds > this.maxRounds) {
-            this.startVoting();
+            await this.startVoting();
             return;
         }
 
         this.currentChallenge = this.challenges[Math.floor(Math.random() * this.challenges.length)];
         this.playerMoves = {};
-        MessagingService.broadcast(this.players, `Round ${this.rounds}: ${this.currentChallenge.text} (Text me privately)`);
+        await MessagingService.broadcast(this.players, `Round ${this.rounds}: ${this.currentChallenge.text} (Text me privately)`);
     }
 
     processInput(player, text) {

@@ -75,8 +75,10 @@ app.post('/sms', async (req, res) => {
             SessionManager.lobbies.delete(sender);
 
             await MessagingService.send(sender, "Starting game...");
-            const response = newSession.startGame(); // This usually returns a string, but broadcasts are better
-            // Ideally startGame broadcasts to everyone.
+            const response = await newSession.startGame();
+            if (response) {
+                await MessagingService.broadcast(lobby.players, response);
+            }
         } else if (message.toLowerCase() === 'cancel') {
             SessionManager.lobbies.delete(sender);
             await MessagingService.send(sender, "Lobby cancelled.");

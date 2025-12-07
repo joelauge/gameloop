@@ -8,15 +8,15 @@ class TimeTravelTrouble extends Game {
         this.eras = ["Jurassic", "1980s Suburb", "Future Dystopia", "Medieval Castle"];
     }
 
-    startGame() {
-        super.startGame();
-        this.nextJump();
+    async startGame() {
+        await super.startGame();
+        await this.nextJump();
         return "Time Machine Malfunction! Gathering pieces...";
     }
 
-    nextJump() {
+    async nextJump() {
         if (this.pieces >= 3) {
-            MessagingService.broadcast(this.players, "Machine Repaired! You return to the present safely.");
+            await MessagingService.broadcast(this.players, "Machine Repaired! You return to the present safely.");
             this.endGame();
             return;
         }
@@ -25,8 +25,8 @@ class TimeTravelTrouble extends Game {
         const player = this.players[Math.floor(Math.random() * this.players.length)];
         this.currentPlayer = player;
 
-        MessagingService.broadcast(this.players, `JUMP! Arrived in: ${era}.`);
-        MessagingService.send(player, "A local approaches. Choose: hide, befriend, ride.");
+        await MessagingService.broadcast(this.players, `JUMP! Arrived in: ${era}.`);
+        await MessagingService.send(player, "A local approaches. Choose: hide, befriend, ride.");
     }
 
     processInput(player, text) {

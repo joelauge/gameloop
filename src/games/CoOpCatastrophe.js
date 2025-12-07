@@ -12,15 +12,15 @@ class CoOpCatastrophe extends Game {
         ];
     }
 
-    startGame() {
-        super.startGame();
-        this.nextEvent();
+    async startGame() {
+        await super.startGame();
+        await this.nextEvent();
         return "Ship System Online. Integrity: 5/5.";
     }
 
-    nextEvent() {
+    async nextEvent() {
         if (this.shipIntegrity <= 0) {
-            MessagingService.broadcast(this.players, "GAME OVER. The ship has exploded (beautifully).");
+            await MessagingService.broadcast(this.players, "GAME OVER. The ship has exploded (beautifully).");
             this.endGame();
             return;
         }
@@ -30,8 +30,8 @@ class CoOpCatastrophe extends Game {
         this.targetPlayer = targetPlayer;
         this.currentEvent = event;
 
-        MessagingService.broadcast(this.players, `ALERT: ${event.text}`);
-        MessagingService.send(targetPlayer, `It's up to you! Reply with '${event.action}' to solve it, or anything else to fail.`);
+        await MessagingService.broadcast(this.players, `ALERT: ${event.text}`);
+        await MessagingService.send(targetPlayer, `It's up to you! Reply with '${event.action}' to solve it, or anything else to fail.`);
     }
 
     processInput(player, text) {

@@ -14,15 +14,15 @@ class ChainReactionStories extends Game {
         ];
     }
 
-    startGame() {
-        super.startGame();
-        this.askNextPlayer();
+    async startGame() {
+        await super.startGame();
+        await this.askNextPlayer();
         return "Once upon a time...";
     }
 
-    askNextPlayer() {
+    async askNextPlayer() {
         if (this.turnIndex >= this.maxTurns) {
-            MessagingService.broadcast(this.players, "THE END. Here is your story:\n\n" + this.story.join(' '));
+            await MessagingService.broadcast(this.players, "THE END. Here is your story:\n\n" + this.story.join(' '));
             this.endGame();
             return;
         }
@@ -30,11 +30,11 @@ class ChainReactionStories extends Game {
         // Inject Twist?
         if (this.turnIndex > 0 && this.turnIndex % 3 === 0) {
             const twist = this.twists[Math.floor(Math.random() * this.twists.length)];
-            MessagingService.broadcast(this.players, `TWIST: ${twist}`);
+            await MessagingService.broadcast(this.players, `TWIST: ${twist}`);
         }
 
         const currentPlayer = this.players[this.turnIndex % this.players.length];
-        MessagingService.send(currentPlayer, "Your turn. Add one sentence.");
+        await MessagingService.send(currentPlayer, "Your turn. Add one sentence.");
     }
 
     processInput(player, text) {

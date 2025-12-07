@@ -18,15 +18,15 @@ class CrypticCourier extends Game {
         ];
     }
 
-    startGame() {
-        super.startGame();
-        this.askNextPlayer();
+    async startGame() {
+        await super.startGame();
+        await this.askNextPlayer();
         return "Welcome to Cryptic Courier! Deliveries are about to get weird.";
     }
 
-    askNextPlayer() {
+    async askNextPlayer() {
         if (this.turnIndex >= 5) { // Game length cap for demo
-            MessagingService.broadcast(this.players, "Shift over! You survived the deliveries.");
+            await MessagingService.broadcast(this.players, "Shift over! You survived the deliveries.");
             this.endGame();
             return;
         }
@@ -35,8 +35,8 @@ class CrypticCourier extends Game {
         const scenario = this.scenarios[Math.floor(Math.random() * this.scenarios.length)];
         this.currentScenario = scenario;
 
-        MessagingService.broadcast(this.players, `Turn ${this.turnIndex + 1}: @${currentPlayer} has a job!`);
-        MessagingService.send(currentPlayer, `You must deliver ${scenario.deliver} to ${scenario.location}. Choose: ${scenario.options.join(', ')}.`);
+        await MessagingService.broadcast(this.players, `Turn ${this.turnIndex + 1}: @${currentPlayer} has a job!`);
+        await MessagingService.send(currentPlayer, `You must deliver ${scenario.deliver} to ${scenario.location}. Choose: ${scenario.options.join(', ')}.`);
     }
 
     processInput(player, text) {

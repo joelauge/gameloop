@@ -8,21 +8,21 @@ class TreasureTextIsland extends Game {
         this.target = 3;
     }
 
-    startGame() {
-        super.startGame();
+    async startGame() {
+        await super.startGame();
         this.players.forEach(p => this.treasures[p] = 0);
-        this.nextRound();
+        await this.nextRound();
         return "Welcome to Treasure Text Island! First to 3 treasures wins.";
     }
 
-    nextRound() {
+    async nextRound() {
         this.currentPlayerIdx = (this.currentPlayerIdx !== undefined ? this.currentPlayerIdx + 1 : 0) % this.players.length;
         const player = this.players[this.currentPlayerIdx];
 
         const dilemma = "You found a crate. Choose: open, burn, hide.";
 
-        MessagingService.broadcast(this.players, `@${player} is exploring...`);
-        MessagingService.send(player, dilemma);
+        await MessagingService.broadcast(this.players, `@${player} is exploring...`);
+        await MessagingService.send(player, dilemma);
     }
 
     processInput(player, text) {

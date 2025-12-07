@@ -9,24 +9,24 @@ class TextTacToeRoyale extends Game {
         this.turnIndex = 0;
     }
 
-    startGame() {
-        super.startGame();
-        this.printBoard();
-        this.askNextPlayer();
+    async startGame() {
+        await super.startGame();
+        await this.printBoard();
+        await this.askNextPlayer();
         return "Text-Tac-Toe Royale Started! 5x5 Grid. Last symbol standing wins.";
     }
 
-    printBoard() {
+    async printBoard() {
         // Simple string representation
         const boardStr = this.board.map(row => row.join(' ')).join('\n');
-        MessagingService.broadcast(this.players, `\n${boardStr}`);
+        await MessagingService.broadcast(this.players, `\n${boardStr}`);
     }
 
-    askNextPlayer() {
+    async askNextPlayer() {
         const currentPlayer = this.players[this.turnIndex % this.players.length];
         const symbol = this.symbols[this.turnIndex % this.players.length]; // Assign symbol by order for simplicity
 
-        MessagingService.send(currentPlayer, `Your turn! You are '${symbol}'. Reply 'row,col' (e.g., 2,3) to place.`);
+        await MessagingService.send(currentPlayer, `Your turn! You are '${symbol}'. Reply 'row,col' (e.g., 2,3) to place.`);
     }
 
     processInput(player, text) {

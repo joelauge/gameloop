@@ -14,10 +14,10 @@ class Game {
         return false;
     }
 
-    startGame() {
+    async startGame() {
         this.state = 'PLAYING';
         const MessagingService = require('../twilio/service'); // Lazy load
-        MessagingService.broadcast(this.players, "Game Started! Everyone is here.");
+        await MessagingService.broadcast(this.players, "Game Started! Everyone is here.");
     }
 
     processInput(phoneNumber, text) {

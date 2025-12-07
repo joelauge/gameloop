@@ -12,21 +12,21 @@ class PocketDungeon extends Game {
         this.loot = ["Golden Spork", "Cursed Sock", "Invisible Hat", "Pocket Lint of Power"];
     }
 
-    startGame() {
-        super.startGame();
-        this.nextTurn();
+    async startGame() {
+        await super.startGame();
+        await this.nextTurn();
         return "Entering the Pocket Dungeon...";
     }
 
-    nextTurn() {
+    async nextTurn() {
         // Random player
         const currentPlayer = this.players[Math.floor(Math.random() * this.players.length)];
         const room = this.rooms[Math.floor(Math.random() * this.rooms.length)];
         this.currentRoom = room;
         this.currentPlayer = currentPlayer;
 
-        MessagingService.broadcast(this.players, `@${currentPlayer} encounters: ${room.text}`);
-        MessagingService.send(currentPlayer, `What do you do? Options: ${room.options.join(', ')}`);
+        await MessagingService.broadcast(this.players, `@${currentPlayer} encounters: ${room.text}`);
+        await MessagingService.send(currentPlayer, `What do you do? Options: ${room.options.join(', ')}`);
     }
 
     processInput(player, text) {
